@@ -1,43 +1,49 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
+from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.naive_bayes import GaussianNB
-from sklearn.metrics import confusion_matrix, accuracy_score
-from sklearn.preprocessing import LabelEncoder, normalize
+import numpy as np
 
-# 1. Sample code number: id number
-# 2. Clump Thickness: 1 - 10
-# 3. Uniformity of Cell Size: 1 - 10
-# 4. Uniformity of Cell Shape: 1 - 10
-# 5. Marginal Adhesion: 1 - 10
-# 6. Single Epithelial Cell Size: 1 - 10
-# 7. Bare Nuclei: 1 - 10
-# 8. Bland Chromatin: 1 - 10
-# 9. Normal Nucleoli: 1 - 10
-# 10. Mitoses: 1 - 10
-# 11. Class: (2 for benign, 4 for malignant)
+def getCols(df):
+    l = LabelEncoder()
+    l.fit(df['Class'])
+    df['Class'] = l.transform(df['Class'])
+    X = df.drop(['Sample code number', 'Class'], axis=1)
+    Y = df['Class'].values
+    return X,Y
 
-dataset = pd.read_csv("bcoriginal.csv")
-dataset = dataset.drop(["id"], axis = 1)
-print(dataset)
-M = dataset[dataset.c10 == 4]
-B = dataset[dataset.c10 == 2]
-plt.title("Malignant vs Benign Tumor")
-plt.xlabel("c1")
-plt.ylabel("c2")
-plt.scatter(M.c1, M.c2, color = "green", label = "Malignant", alpha = 0.8)
-plt.scatter(B.c1, B.c2, color = "blue", label = "Benign", alpha = 0.8)
-plt.legend()
-plt.show()
-dataset.c10 = [1 if i == 4 else 0 for i in dataset.c10.values]
-x = dataset.drop(["c10"], axis = 1)
-print(x)
-y=dataset["c10"].values
-print(y)
-# x = (x - np.min(x)) / (np.max(x) - np.min(x))
-x_train, x_test, y_train, y_test = train_test_split(x, y, test_size = 0.3, random_state = 42)
-nb = GaussianNB()
-nb.fit(x_train, y_train)
-print("Naive Bayes score: ",nb.score(x_test, y_test))
+df = pd.read_csv("./Dataset/bcoriginal.csv")
+df = df.replace('?', np.nan)
+df = df.apply(lambda x: x.fillna(str(int(x.median()))),axis=0)
+X,Y=getCols(df)
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=0)
+
+def prior_probability_count(Y):
+    c1=c2=0
+    for i in Y_train:
+        if i==0:
+            c1+=1
+        else:
+            c2+=1
+    return c1,c2
+
+c1,c2=prior_probability_count(Y_train)
+print(c1," ",c2)
+
+def construct_cpt(X,Y):
+    unique=list(set(X))
+    X=list(X)
+    cpt={}
+    for i in unique:
+        l=[0,0]
+        for j in range(len(X)):
+            if i==X[j]:
+                l[Y[j]]+=1
+            cpt[i]=l
+    print(cpt)
+    return cpt
+
+ind=X_train.columns
+CPT={}
+for i in ind:
+    print("\nCPT for",i,":")
+    CPT[i]=construct_cpt(X_train[i], Y_train)
